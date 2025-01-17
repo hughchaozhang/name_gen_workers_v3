@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import { prettyJSON } from 'hono/pretty-json'
 import { errorHandler } from './middleware/errorHandler'
 import { validateNameRequest } from './middleware/validator'
-import { rateLimiter } from './middleware/rateLimiter'  // 导入限流中间件
+import { rateLimiter } from './middleware/rateLimiter'
 import { NameGeneratorService } from './services/nameGenerator'
 import type Env from './types/env'
 
@@ -13,7 +13,7 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors())
 app.use('*', prettyJSON())
 app.use('*', errorHandler)
-app.use('/api/*', rateLimiter)  // 为所有 API 路由添加限流
+app.use('/api/*', rateLimiter)
 
 // favicon 处理
 app.get('/favicon.ico', (c) => {
@@ -31,10 +31,23 @@ app.get('/', (c) => {
 
 // 名字生成接口
 app.post('/api/generate', validateNameRequest, async (c) => {
-  const nameRequest = c.get('nameRequest')
-  const nameGenerator = NameGeneratorService.getInstance(c.env)
-  const result = await nameGenerator.generateNames(nameRequest)
-  return c.json(result)
+  try {
+    const body = await c.req.json()
+    const nameGenerator = NameGeneratorService.getInstance(c.env)
+    const result = await nameGenerator.generateNames({
+      firstName: body.firstName,
+      lastName: body.lastName
+    })
+    return c.json(result)
+  } catch (error) {
+    console.error('Error generating names:', error)
+    return c.json({
+      error: {
+        message: '生成名字时发生错误',
+        status: 500
+      }
+    }, 500)
+  }
 })
 
 export default app
