@@ -1,17 +1,19 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { prettyJSON } from 'hono/pretty-json'
 import { errorHandler } from './middleware/errorHandler'
 import { validateNameRequest } from './middleware/validator'
+import { rateLimiter } from './middleware/rateLimiter'  // 导入限流中间件
 import { NameGeneratorService } from './services/nameGenerator'
 import type Env from './types/env'
 
 const app = new Hono<{ Bindings: Env }>()
 
-// 添加全局错误处理中间件
-app.use('*', errorHandler)
-
-// 添加 CORS 中间件
+// 全局中间件
 app.use('*', cors())
+app.use('*', prettyJSON())
+app.use('*', errorHandler)
+app.use('/api/*', rateLimiter)  // 为所有 API 路由添加限流
 
 // favicon 处理
 app.get('/favicon.ico', (c) => {

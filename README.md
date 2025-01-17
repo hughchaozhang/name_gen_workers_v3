@@ -139,7 +139,7 @@ Content-Type: application/json
 
 **请求**
 ```bash
-curl -X POST https://name-gen-v3.hughzhang.workers.dev/api/generate \
+curl -X POST https://xxxxxxxx.hughzhang.workers.dev/api/generate \
   -H "Content-Type: application/json" \
   -d '{"firstName": "William"}'
 ```
@@ -210,7 +210,7 @@ bun run deploy
 
 ## 生产环境
 
-生产环境 API 地址：https://name-gen-v3.hughzhang.workers.dev
+生产环境 API 地址：https://xxxxxxx.hughzhang.workers.dev
 
 ## 开发者
 
