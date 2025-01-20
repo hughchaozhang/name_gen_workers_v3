@@ -14,4 +14,5 @@ export interface GeneratedName {
 
 export interface NameGenerateResponse {
   names: GeneratedName[];
+  totalNamesGenerated: number;
 }

@@ -21,9 +21,25 @@ export class NameGeneratorService {
   // 生成名字的主要方法
   public async generateNames(request: NameGenerateRequest): Promise<NameGenerateResponse> {
     try {
+      console.log('开始生成名字...');
       const prompt = this.constructPrompt(request);
+      console.log('构建提示完成，调用 AI...');
       const response = await this.callAI(prompt);
-      return this.parseResponse(response);
+      console.log('AI 响应接收完成，解析响应...');
+      const result = this.parseResponse(response);
+      
+      // 更新计数器
+      console.log('开始更新计数器...');
+      const currentCount = await this.updateNameCounter();
+      console.log('计数器更新完成，当前计数:', currentCount);
+      
+      // 在返回结果中添加计数信息
+      const finalResult = {
+        names: result.names,
+        totalNamesGenerated: currentCount
+      };
+      console.log('最终返回结果:', JSON.stringify(finalResult));
+      return finalResult;
     } catch (error) {
       console.error('Error generating names:', error);
       throw new Error('Failed to generate names');
@@ -32,13 +48,14 @@ export class NameGeneratorService {
 
   // 构建 AI 提示
   private constructPrompt(request: NameGenerateRequest): string {
-    const fullName = request.lastName 
-      ? `${request.firstName} ${request.lastName}`
-      : request.firstName;
+    const nameInfo = request.lastName 
+      ? `名字（First Name）：${request.firstName}\n姓氏（Last Name）：${request.lastName}`
+      : `名字（First Name）：${request.firstName}`;
     
     return `${SYSTEM_PROMPT}
 
-请为以下英文名生成中文名字：${fullName}
+请为以下英文名生成中文名字：
+${nameInfo}
 
 请以下面的 JSON 格式返回结果：
 {
@@ -58,7 +75,7 @@ export class NameGeneratorService {
   private async callAI(prompt: string): Promise<any> {
     // 在开发环境中使用模拟数据
     if (this.env.ENVIRONMENT === 'development') {
-      return {
+      const mockResult = {
         names: [
           {
             chineseName: "简安怡",
@@ -83,6 +100,7 @@ export class NameGeneratorService {
           }
         ]
       };
+      return mockResult;
     }
 
     // 生产环境使用真实 API
@@ -99,46 +117,73 @@ export class NameGeneratorService {
             role: "system",
             content: prompt
           }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: "json_object" }
+        ]
       })
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('AI API Error:', error);
       throw new Error(`AI API request failed: ${response.status}`);
     }
 
-    const data = await response.json();
-    
+    const aiResponse = await response.json();
     try {
-      // 尝试解析 AI 返回的 JSON 字符串
-      const content = data.choices[0].message.content;
+      // 尝试解析 AI 的响应
+      const content = aiResponse.choices[0].message.content;
       return JSON.parse(content);
     } catch (error) {
       console.error('Error parsing AI response:', error);
-      throw new Error('Invalid response format from AI API');
+      console.log('Raw AI response:', aiResponse);
+      throw new Error('Failed to parse AI response');
     }
   }
 
-  // 解析并验证 AI 响应
-  private parseResponse(aiResponse: any): NameGenerateResponse {
-    // 验证响应格式
-    if (!aiResponse.names || !Array.isArray(aiResponse.names)) {
+  // 解析响应
+  private parseResponse(response: any): { names: GeneratedName[] } {
+    // 确保返回的数据符合我们的类型定义
+    if (!response.names || !Array.isArray(response.names)) {
       throw new Error('Invalid response format: missing names array');
     }
 
-    // 验证每个名字对象的格式
-    aiResponse.names.forEach((name: any, index: number) => {
-      if (!name.chineseName || !name.pinyin || !name.meaning || 
-          !name.culturalReference || !name.englishMeaning) {
-        throw new Error(`Invalid name object at index ${index}`);
+    const names = response.names.map((name: any) => {
+      if (!name.chineseName || !name.pinyin || !name.meaning) {
+        throw new Error('Invalid name format in response');
       }
+      return {
+        chineseName: name.chineseName,
+        pinyin: name.pinyin,
+        meaning: name.meaning,
+        culturalReference: name.culturalReference || '',
+        englishMeaning: name.englishMeaning || ''
+      };
     });
 
-    return aiResponse;
+    return { names };  // 只返回名字数组，计数器值会在 generateNames 方法中添加
+  }
+
+  // 更新名字计数器
+  private async updateNameCounter(): Promise<number> {
+    try {
+      console.log('正在从 KV 读取当前计数...');
+      // 获取当前计数
+      const countStr = await this.env.NAME_GEN_KV.get('name_counter');
+      console.log('从 KV 读取的计数值:', countStr);
+      
+      let count = countStr ? parseInt(countStr) : 52;  // 如果没有计数，从52开始
+      console.log('解析后的计数值:', count);
+      
+      // 每次生成3个名字，所以加3
+      count += 3;
+      console.log('增加3后的计数值:', count);
+      
+      // 更新计数
+      console.log('正在将新计数值写入 KV...');
+      await this.env.NAME_GEN_KV.put('name_counter', count.toString());
+      console.log('计数值已更新到 KV');
+      
+      return count;
+    } catch (error) {
+      console.error('更新计数器时出错:', error);
+      return 0;  // 如果出错，返回0
+    }
   }
 }
