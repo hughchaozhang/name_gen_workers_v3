@@ -31,6 +31,5 @@ lerna-debug.log*
 
 # misc
 .DS_Store
-test_api.py
 requirements/*
 

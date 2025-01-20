@@ -73,8 +73,12 @@ ${nameInfo}
 
   // 调用 AI API
   private async callAI(prompt: string): Promise<any> {
+    console.log('当前环境:', this.env.ENVIRONMENT);
+    console.log('AI API Endpoint:', this.env.AI_API_ENDPOINT);
+    
     // 在开发环境中使用模拟数据
     if (this.env.ENVIRONMENT === 'development') {
+      console.log('使用开发环境测试数据');
       const mockResult = {
         names: [
           {
@@ -104,6 +108,7 @@ ${nameInfo}
     }
 
     // 生产环境使用真实 API
+    console.log('使用生产环境 API');
     const response = await fetch(this.env.AI_API_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -122,17 +127,21 @@ ${nameInfo}
     });
 
     if (!response.ok) {
+      console.error('API 请求失败:', response.status, response.statusText);
       throw new Error(`AI API request failed: ${response.status}`);
     }
 
     const aiResponse = await response.json();
     try {
       // 尝试解析 AI 的响应
+      console.log('收到 AI 响应');
       const content = aiResponse.choices[0].message.content;
-      return JSON.parse(content);
+      const parsedContent = JSON.parse(content);
+      console.log('成功解析 AI 响应');
+      return parsedContent;
     } catch (error) {
-      console.error('Error parsing AI response:', error);
-      console.log('Raw AI response:', aiResponse);
+      console.error('解析 AI 响应时出错:', error);
+      console.log('原始 AI 响应:', aiResponse);
       throw new Error('Failed to parse AI response');
     }
   }
