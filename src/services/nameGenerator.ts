@@ -195,4 +195,21 @@ ${nameInfo}
       return 0;  // 如果出错，返回0
     }
   }
+
+  // 获取已生成的名字总数
+  public async getTotalNamesGenerated(): Promise<number> {
+    try {
+      console.log('正在获取名字生成总数...');
+      const countStr = await this.env.NAME_GEN_KV.get('name_counter');
+      console.log('从 KV 读取的计数值:', countStr);
+      
+      const count = countStr ? parseInt(countStr) : 52;  // 如果没有计数，返回初始值52
+      console.log('当前名字生成总数:', count);
+      
+      return count;
+    } catch (error) {
+      console.error('获取名字总数时出错:', error);
+      return 0;  // 如果出错，返回0
+    }
+  }
 }

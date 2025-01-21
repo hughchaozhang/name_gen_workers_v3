@@ -50,4 +50,24 @@ app.post('/api/generate', validateNameRequest, async (c) => {
   }
 })
 
+// 统计信息接口
+app.get('/api/stats', async (c) => {
+  try {
+    const nameGenerator = NameGeneratorService.getInstance(c.env)
+    const totalNamesGenerated = await nameGenerator.getTotalNamesGenerated()
+    return c.json({
+      totalNamesGenerated,
+      status: 'success'
+    })
+  } catch (error) {
+    console.error('Error getting stats:', error)
+    return c.json({
+      error: {
+        message: '获取统计信息时发生错误',
+        status: 500
+      }
+    }, 500)
+  }
+})
+
 export default app
